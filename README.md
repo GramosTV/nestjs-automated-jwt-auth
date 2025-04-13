@@ -1,98 +1,147 @@
+# NestJS Automated JWT Authentication
+
 <p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
+  <img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" />
 </p>
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+<p align="center">A fully automated server-side authentication system built with NestJS and JWT.</p>
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
+<p align="center">
+  <a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
+  <a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
+  <a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
 </p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
 
-## Description
+## Overview
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+This project implements a fully server-side authentication system using NestJS and JSON Web Tokens (JWT). Unlike traditional JWT implementations that require client-side token management, this solution automates the access and refresh token handling process.
 
-## Project setup
+### Key Features
+
+- **Automated token refresh**: No need for the client to manually request a refresh token
+- **Secure HTTP-only cookies**: Protects tokens from XSS attacks
+- **Role-based access control**: Admin and user-level permissions
+- **Password reset workflow**: Complete with email notifications
+- **Token management**: Automatic cleanup of expired tokens
+- **Rate limiting**: Protection against brute-force attacks
+- **Session management**: Users are limited to 3 active sessions
+
+## Tech Stack
+
+- **NestJS**: Progressive Node.js framework
+- **TypeORM**: Database ORM for token and user management
+- **JWT**: JSON Web Tokens for authentication
+- **Bcrypt**: Secure password hashing
+- **Fastify**: Fast HTTP server
+- **Handlebars**: Email templating
+
+## Architecture
+
+The authentication flow works as follows:
+
+1. **Login**: User provides credentials and receives access and refresh tokens
+2. **Token Usage**: Access token is sent with each request via Authorization header
+3. **Automatic Refresh**: When the access token expires, the system automatically uses the refresh token to issue a new one
+4. **Security**: Refresh tokens are stored in HTTP-only cookies and hashed in the database
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 16+ and npm
+- PostgreSQL or another database supported by TypeORM
+
+### Installation
 
 ```bash
+# Install dependencies
 $ npm install
 ```
 
-## Compile and run the project
+### Configuration
+
+Create a `.env` file in the root directory with the following variables:
+
+```
+# Application
+PORT=3000
+NODE_ENV=development
+
+# JWT
+JWT_SECRET=your_jwt_secret_key
+JWT_REFRESH_SECRET=your_jwt_refresh_secret_key
+JWT_PASSWORD_SECRET=your_jwt_password_secret_key
+
+# Database
+DB_HOST=localhost
+DB_PORT=5432
+DB_USERNAME=postgres
+DB_PASSWORD=postgres
+DB_DATABASE=auth_db
+
+# Mail
+MAIL_HOST=smtp.example.com
+MAIL_USER=user@example.com
+MAIL_PASSWORD=mail_password
+MAIL_FROM=noreply@example.com
+```
+
+### Running the Application
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
+# Development mode
 $ npm run start:dev
 
-# production mode
+# Production mode
 $ npm run start:prod
 ```
 
-## Run tests
+### Testing
 
 ```bash
-# unit tests
+# Unit tests
 $ npm run test
 
-# e2e tests
+# E2E tests
 $ npm run test:e2e
 
-# test coverage
+# Test coverage
 $ npm run test:cov
 ```
 
-## Deployment
+## API Endpoints
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+### Authentication
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+- **POST /auth/login** - Authenticate user and get tokens
+- **POST /auth/logout** - Invalidate refresh token
+- **POST /auth/refresh** - Refresh access token (automatic)
+- **POST /auth/password-reset** - Request password reset link
+- **POST /auth/reset-password** - Confirm password reset with token
 
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
+### Users
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+- **GET /users** - Get all users (admin only)
+- **GET /users/:id** - Get user by ID
+- **POST /users** - Create new user
+- **PATCH /users/:id** - Update user
+- **DELETE /users/:id** - Delete user
 
-## Resources
+## Security Considerations
 
-Check out a few resources that may come in handy when working with NestJS:
+This implementation includes several security features:
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+- **HTTP-only cookies** for refresh tokens to prevent XSS attacks
+- **Refresh token rotation** to prevent token reuse
+- **Rate limiting** to prevent brute force attacks
+- **Session limits** to prevent token stealing
+- **Token expiration** with automatic cleanup
+- **Password hashing** using bcrypt
 
-## Support
+## Contributing
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+This project is [MIT licensed](LICENSE).
