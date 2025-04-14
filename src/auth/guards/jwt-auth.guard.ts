@@ -43,7 +43,6 @@ export class JwtAuthGuard extends AuthGuard('jwt') implements CanActivate {
 
           req.headers['authorization'] = `Bearer ${newAccessToken}`;
         } catch (err) {
-          console.error(err);
           throw new UnauthorizedException('Invalid refresh token');
         }
       } else {
