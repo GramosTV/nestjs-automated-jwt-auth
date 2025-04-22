@@ -3,6 +3,7 @@ import {
   UnauthorizedException,
   InternalServerErrorException,
   ForbiddenException,
+  NotFoundException,
 } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import * as bcrypt from 'bcrypt';
@@ -187,6 +188,39 @@ export class AuthService {
     } catch (error) {
       throw new UnauthorizedException(
         'The provided token is invalid or has expired.',
+      );
+    }
+  }
+
+  async googleLogin(req) {
+    if (!req.user) {
+      throw new UnauthorizedException('No user from Google');
+    }
+
+    try {
+      let user;
+      try {
+        user = await this.usersService.findOneByEmail(req.user.email);
+      } catch (error) {
+        if (error instanceof NotFoundException) {
+          const randomPassword = uuidv4();
+          const hashedPassword = await bcrypt.hash(randomPassword, 10);
+          user = await this.usersService.create({
+            email: req.user.email,
+            password: hashedPassword,
+            firstName: req.user.firstName,
+            lastName: req.user.lastName,
+          });
+        } else {
+          throw error;
+        }
+      }
+
+      return this.login(user);
+    } catch (error) {
+      console.error('Google authentication error:', error);
+      throw new InternalServerErrorException(
+        'Error during Google authentication',
       );
     }
   }

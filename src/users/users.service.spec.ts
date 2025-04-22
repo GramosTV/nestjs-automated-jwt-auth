@@ -71,7 +71,7 @@ describe('UsersService', () => {
         password: 'hashedPassword',
       } as UserEntity);
 
-      await service.createUser(createUserDto);
+      await service.create(createUserDto);
 
       expect(userRepository.findOneBy).toHaveBeenCalledWith({
         email: 'new@example.com',
@@ -96,7 +96,7 @@ describe('UsersService', () => {
         email: 'existing@example.com',
       } as UserEntity);
 
-      await expect(service.createUser(createUserDto)).rejects.toThrow(
+      await expect(service.create(createUserDto)).rejects.toThrow(
         new ConflictException(
           `User with email ${createUserDto.email} already exists.`,
         ),
