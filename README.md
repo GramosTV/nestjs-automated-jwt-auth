@@ -25,6 +25,7 @@ This project implements a fully server-side authentication system using NestJS a
 - **Token management**: Automatic cleanup of expired tokens
 - **Rate limiting**: Protection against brute-force attacks
 - **Session management**: Users are limited to 3 active sessions
+- **Google OAuth integration**: Simplified social login with Google
 
 ## Tech Stack
 
@@ -34,6 +35,7 @@ This project implements a fully server-side authentication system using NestJS a
 - **Bcrypt**: Secure password hashing
 - **Fastify**: Fast HTTP server
 - **Handlebars**: Email templating
+- **Passport.js**: Authentication middleware for Google OAuth
 
 ## Architecture
 
@@ -64,26 +66,31 @@ Create a `.env` file in the root directory with the following variables:
 
 ```
 # Application
-PORT=3000
+PORT=3001
+ORIGIN=http://localhost:3000
 NODE_ENV=development
 
 # JWT
 JWT_SECRET=your_jwt_secret_key
 JWT_REFRESH_SECRET=your_jwt_refresh_secret_key
 JWT_PASSWORD_SECRET=your_jwt_password_secret_key
+COOKIE_SECRET=your_cookie_secret_key
 
 # Database
 DB_HOST=localhost
 DB_PORT=5432
 DB_USERNAME=postgres
 DB_PASSWORD=postgres
-DB_DATABASE=auth_db
+DB_NAME=auth_db
 
 # Mail
-MAIL_HOST=smtp.example.com
-MAIL_USER=user@example.com
-MAIL_PASSWORD=mail_password
-MAIL_FROM=noreply@example.com
+MAILER_TRANSPORT=smtp://localhost:1025
+MAILER_DEFAULT_FROM=noreply@example.com
+
+# Google OAuth
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+GOOGLE_CALLBACK_URL=http://localhost:3001/auth/google/callback
 ```
 
 ### Running the Application
@@ -118,6 +125,8 @@ $ npm run test:cov
 - **POST /auth/refresh** - Refresh access token (automatic)
 - **POST /auth/password-reset** - Request password reset link
 - **POST /auth/reset-password** - Confirm password reset with token
+- **GET /auth/google** - Initiate Google OAuth authentication
+- **GET /auth/google/callback** - Google OAuth callback handler
 
 ### Users
 
@@ -137,6 +146,7 @@ This implementation includes several security features:
 - **Session limits** to prevent token stealing
 - **Token expiration** with automatic cleanup
 - **Password hashing** using bcrypt
+- **OAuth state verification** to prevent CSRF attacks during Google authentication
 
 ## Contributing
 

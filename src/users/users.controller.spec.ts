@@ -24,7 +24,7 @@ describe('UsersController', () => {
 
   beforeEach(async () => {
     const usersServiceMock = {
-      createUser: jest.fn(),
+      create: jest.fn(),
       findOneById: jest.fn(),
       updateUser: jest.fn(),
     };
@@ -51,11 +51,11 @@ describe('UsersController', () => {
         password: 'password123',
       };
 
-      usersService.createUser.mockResolvedValue(mockUser);
+      usersService.create.mockResolvedValue(mockUser);
 
-      const result = await controller.createUser(createUserDto);
+      const result = await controller.create(createUserDto);
 
-      expect(usersService.createUser).toHaveBeenCalledWith(createUserDto);
+      expect(usersService.create).toHaveBeenCalledWith(createUserDto);
       expect(result).toEqual(mockUser);
     });
   });

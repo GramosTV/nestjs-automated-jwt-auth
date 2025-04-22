@@ -3,6 +3,7 @@ import {
   Body,
   Controller,
   Delete,
+  Get,
   HttpCode,
   HttpStatus,
   Post,
@@ -13,6 +14,7 @@ import {
 import { AuthService } from './auth.service';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { GoogleAuthGuard } from './guards/google-auth.guard';
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { RequestPasswordResetDto } from './dto/request-password-reset.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
@@ -106,5 +108,46 @@ export class AuthController {
       resetPasswordDto.token,
       resetPasswordDto.password,
     );
+  }
+
+  @Get('google')
+  @UseGuards(GoogleAuthGuard)
+  async googleAuth() {
+    return { message: 'Redirecting to Google' };
+  }
+
+  @Get('google/callback')
+  @UseGuards(GoogleAuthGuard)
+  async googleAuthRedirect(
+    @Req() req: any,
+    @Res({ passthrough: true }) res: FastifyReply,
+  ) {
+    try {
+      if (!req.user) {
+        return res.status(401).send({ message: 'Authentication failed' });
+      }
+
+      const { accessToken, refreshToken } =
+        await this.authService.googleLogin(req);
+
+      res.setCookie('refreshToken', refreshToken, {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'strict',
+      });
+
+      res.setCookie('accessToken', accessToken, {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'strict',
+      });
+
+      return res.send({ accessToken });
+    } catch (error) {
+      return res.status(500).send({
+        message: 'Error during Google authentication',
+        error: error.message,
+      });
+    }
   }
 }

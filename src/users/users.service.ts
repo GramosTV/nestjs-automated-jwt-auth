@@ -19,7 +19,7 @@ export class UsersService {
     private userRepository: Repository<UserEntity>,
   ) {}
 
-  async createUser(userData: CreateUserDto): Promise<UserEntity> {
+  async create(userData: CreateUserDto): Promise<UserEntity> {
     const existingUser = await this.userRepository.findOneBy({
       email: userData.email,
     });
