@@ -6,7 +6,7 @@ import { RefreshTokensService } from '../refresh-tokens/refresh-tokens.service';
 import { MailService } from '../mail/mail.service';
 import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
-import { UserEntity } from '../users/entities/user.entity';
+import { UserDocument } from '../users/schemas/user.schema';
 import { Role } from '../users/interfaces/role.enum';
 
 jest.mock('bcrypt');
@@ -17,12 +17,21 @@ describe('AuthService', () => {
   let jwtService: jest.Mocked<JwtService>;
   let refreshTokensService: jest.Mocked<RefreshTokensService>;
   let mailService: jest.Mocked<MailService>;
-
-  const mockUser: Partial<UserEntity> = {
-    id: 'test-uuid',
+  const mockUser: Partial<UserDocument> = {
+    _id: 'test-uuid',
     email: 'test@example.com',
     role: Role.USER,
     password: 'hashedPassword',
+    firstName: 'John',
+    lastName: 'Doe',
+    toObject: jest.fn(() => ({
+      _id: 'test-uuid',
+      email: 'test@example.com',
+      role: Role.USER,
+      password: 'hashedPassword',
+      firstName: 'John',
+      lastName: 'Doe',
+    })),
   };
 
   beforeEach(async () => {
@@ -63,7 +72,6 @@ describe('AuthService', () => {
     refreshTokensService = module.get(RefreshTokensService);
     mailService = module.get(MailService);
 
-    // Mock environment variables
     process.env.JWT_SECRET = 'test-jwt-secret';
     process.env.JWT_REFRESH_SECRET = 'test-jwt-refresh-secret';
     process.env.JWT_PASSWORD_SECRET = 'test-jwt-password-secret';
@@ -79,19 +87,21 @@ describe('AuthService', () => {
 
   describe('validateUser', () => {
     it('should return user object when credentials are valid', async () => {
-      usersService.findOneByEmail.mockResolvedValue(mockUser as UserEntity);
+      usersService.findOneByEmail.mockResolvedValue(mockUser as UserDocument);
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
 
       const result = await service.validateUser('test@example.com', 'password');
-
       expect(result).toEqual({
-        id: mockUser.id,
+        _id: mockUser._id,
+        id: mockUser._id,
         email: mockUser.email,
+        firstName: mockUser.firstName,
+        lastName: mockUser.lastName,
         role: mockUser.role,
       });
       expect(usersService.findOneByEmail).toHaveBeenCalledWith(
         'test@example.com',
-        ['id', 'email', 'role', 'password'],
+        ['_id', 'email', 'role', 'password'],
       );
     });
 
@@ -104,9 +114,8 @@ describe('AuthService', () => {
         service.validateUser('nonexistent@example.com', 'password'),
       ).rejects.toThrow(ForbiddenException);
     });
-
     it('should throw ForbiddenException when password is invalid', async () => {
-      usersService.findOneByEmail.mockResolvedValue(mockUser as UserEntity);
+      usersService.findOneByEmail.mockResolvedValue(mockUser as UserDocument);
       (bcrypt.compare as jest.Mock).mockResolvedValue(false);
 
       await expect(
@@ -118,7 +127,7 @@ describe('AuthService', () => {
   describe('login', () => {
     it('should return access and refresh tokens when login is successful', async () => {
       const userWithoutPassword = {
-        id: mockUser.id,
+        id: mockUser._id,
         email: mockUser.email,
         role: mockUser.role,
       };
@@ -200,7 +209,7 @@ describe('AuthService', () => {
 
   describe('requestPasswordReset', () => {
     it('should send password reset email for existing user', async () => {
-      usersService.findOneByEmail.mockResolvedValue(mockUser as UserEntity);
+      usersService.findOneByEmail.mockResolvedValue(mockUser as UserDocument);
       jwtService.sign.mockReturnValue('password-reset-token');
 
       const result = await service.requestPasswordReset('test@example.com');
@@ -234,11 +243,12 @@ describe('AuthService', () => {
 
   describe('confirmResetPassword', () => {
     it('should reset password when token is valid', async () => {
-      jwtService.verify.mockReturnValue({ userId: mockUser.id });
+      jwtService.verify.mockReturnValue({ userId: mockUser._id });
       usersService.findOneById.mockResolvedValue({
         ...mockUser,
         password: '',
-      } as UserEntity);
+        __v: 0,
+      } as any);
       (bcrypt.hash as jest.Mock).mockResolvedValue('new-hashed-password');
 
       const result = await service.confirmResetPassword(

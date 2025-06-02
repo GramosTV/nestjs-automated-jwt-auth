@@ -30,7 +30,7 @@ This project implements a fully server-side authentication system using NestJS a
 ## Tech Stack
 
 - **NestJS**: Progressive Node.js framework
-- **TypeORM**: Database ORM for token and user management
+- **Mongoose**: MongoDB object modeling for Node.js
 - **JWT**: JSON Web Tokens for authentication
 - **Bcrypt**: Secure password hashing
 - **Fastify**: Fast HTTP server
@@ -51,7 +51,7 @@ The authentication flow works as follows:
 ### Prerequisites
 
 - Node.js 16+ and npm
-- PostgreSQL or another database supported by TypeORM
+- MongoDB database
 
 ### Installation
 
@@ -77,11 +77,7 @@ JWT_PASSWORD_SECRET=your_jwt_password_secret_key
 COOKIE_SECRET=your_cookie_secret_key
 
 # Database
-DB_HOST=localhost
-DB_PORT=5432
-DB_USERNAME=postgres
-DB_PASSWORD=postgres
-DB_NAME=auth_db
+MONGODB_URI=mongodb://localhost:27017/auth_db
 
 # Mail
 MAILER_TRANSPORT=smtp://localhost:1025

@@ -10,7 +10,7 @@ import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { RefreshTokensService } from '../refresh-tokens/refresh-tokens.service';
 import { v4 as uuidv4 } from 'uuid';
-import { UserEntity } from '../users/entities/user.entity';
+import { User, UserDocument } from '../users/schemas/user.schema';
 import {
   JwtAccessPayload,
   JwtRefreshPayload,
@@ -63,14 +63,13 @@ export class AuthService {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
   }
-
   async validateUser(
     email: string,
     pass: string,
-  ): Promise<Omit<UserEntity, 'password'>> {
+  ): Promise<Omit<UserDocument, 'password'>> {
     try {
       const user = await this.usersService.findOneByEmail(email, [
-        'id',
+        '_id',
         'email',
         'role',
         'password',
@@ -84,25 +83,26 @@ export class AuthService {
         throw new ForbiddenException('Invalid credentials');
       }
 
-      const { password, ...result } = user;
-      return result;
+      const userObject = user.toObject();
+      const { password, ...result } = userObject;
+      return { ...result, id: result._id };
     } catch (error) {
       throw error;
     }
   }
-
-  async login(user: Omit<UserEntity, 'password'>) {
+  async login(user: Omit<UserDocument, 'password'>) {
     try {
       const jti = uuidv4();
+      const userId = user._id || user.id; // Handle both _id and id
       const payload = {
         email: user.email,
-        sub: user.id,
+        sub: userId,
         jti,
         role: user.role,
       };
       const accessToken = this.generateAccessToken(payload);
       const refreshToken = await this.refreshTokensService.create(
-        user.id,
+        userId,
         payload,
         jti,
       );

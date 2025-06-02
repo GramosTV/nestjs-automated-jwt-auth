@@ -2,12 +2,23 @@ import { Module } from '@nestjs/common';
 import { RefreshTokensService } from './refresh-tokens.service';
 import { ScheduleModule } from '@nestjs/schedule';
 import { JwtModule } from '@nestjs/jwt';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { RefreshTokenEntity } from './entities/refresh-token.entity';
-import { UserEntity } from '../users/entities/user.entity';
+import { MongooseModule } from '@nestjs/mongoose';
+import {
+  RefreshToken,
+  RefreshTokenSchema,
+} from './schemas/refresh-token.schema';
+import { User, UserSchema } from '../users/schemas/user.schema';
+
 @Module({
-  imports: [JwtModule, ScheduleModule.forRoot(), TypeOrmModule.forFeature([RefreshTokenEntity, UserEntity])],
+  imports: [
+    JwtModule,
+    ScheduleModule.forRoot(),
+    MongooseModule.forFeature([
+      { name: RefreshToken.name, schema: RefreshTokenSchema },
+      { name: User.name, schema: UserSchema },
+    ]),
+  ],
   providers: [RefreshTokensService],
-  exports: [RefreshTokensService, TypeOrmModule.forFeature([RefreshTokenEntity])],
+  exports: [RefreshTokensService],
 })
 export class RefreshTokensModule {}

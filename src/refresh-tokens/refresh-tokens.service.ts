@@ -2,60 +2,66 @@ import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { Cron } from '@nestjs/schedule';
 import { JwtService } from '@nestjs/jwt';
-import { RefreshTokenEntity } from './entities/refresh-token.entity';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { UserEntity } from '../users/entities/user.entity';
+import {
+  RefreshToken,
+  RefreshTokenDocument,
+} from './schemas/refresh-token.schema';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { User, UserDocument } from '../users/schemas/user.schema';
 import { JwtRefreshPayload } from '../auth/interfaces/jwt-payload.interface';
-import { LessThan, MoreThan } from 'typeorm';
 
 @Injectable()
 export class RefreshTokensService {
   constructor(
-    @InjectRepository(RefreshTokenEntity)
-    private refreshTokenRepository: Repository<RefreshTokenEntity>,
+    @InjectModel(RefreshToken.name)
+    private refreshTokenModel: Model<RefreshTokenDocument>,
     private jwtService: JwtService,
-    @InjectRepository(UserEntity)
-    private userRepository: Repository<UserEntity>,
+    @InjectModel(User.name)
+    private userModel: Model<UserDocument>,
   ) {}
 
-  async create(userId: string, payload: JwtRefreshPayload, jti: string): Promise<string> {
+  async create(
+    userId: string,
+    payload: JwtRefreshPayload,
+    jti: string,
+  ): Promise<string> {
     try {
       const token = this.jwtService.sign(payload, {
         expiresIn: '30d',
         secret: process.env.JWT_REFRESH_SECRET,
       });
 
-      const activeTokens = await this.refreshTokenRepository.find({
-        where: {
-          user: { id: userId },
-          isRevoked: false,
-          expiresAt: MoreThan(new Date()),
-        },
+      const activeTokens = await this.refreshTokenModel.find({
+        user: userId,
+        isRevoked: false,
+        expiresAt: { $gt: new Date() },
       });
 
       if (activeTokens.length >= 3) {
-        const tokenToDelete = activeTokens.reduce((prev, curr) => (prev.expiresAt < curr.expiresAt ? prev : curr));
+        const tokenToDelete = activeTokens.reduce((prev, curr) =>
+          prev.expiresAt < curr.expiresAt ? prev : curr,
+        );
 
-        await this.refreshTokenRepository.delete({ id: tokenToDelete.id });
+        await this.refreshTokenModel.findByIdAndDelete(tokenToDelete._id);
       }
 
       const hashedToken = await bcrypt.hash(token, 10);
 
-      const user = await this.userRepository.findOne({ where: { id: userId } });
+      const user = await this.userModel.findById(userId);
 
       if (!user) {
         throw new InternalServerErrorException('User not found');
       }
 
-      const refreshToken = this.refreshTokenRepository.create({
-        user,
+      const refreshToken = new this.refreshTokenModel({
+        user: user._id,
         jti,
         token: hashedToken,
         expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
       });
 
-      await this.refreshTokenRepository.save(refreshToken);
+      await refreshToken.save();
 
       return token;
     } catch (error) {
@@ -63,24 +69,25 @@ export class RefreshTokensService {
     }
   }
 
-  async findOne(jti: string): Promise<RefreshTokenEntity | null> {
-    return await this.refreshTokenRepository.findOne({
-      where: { jti },
-    });
+  async findOne(jti: string): Promise<RefreshTokenDocument | null> {
+    return await this.refreshTokenModel.findOne({ jti });
   }
 
   async revoke(jti: string): Promise<void> {
-    await this.refreshTokenRepository.update({ jti }, { isRevoked: true });
+    await this.refreshTokenModel.updateOne({ jti }, { isRevoked: true });
   }
 
   async revokeAllTokensForUser(userId: string): Promise<void> {
-    await this.refreshTokenRepository.update({ user: { id: userId } }, { isRevoked: true });
+    await this.refreshTokenModel.updateMany(
+      { user: userId },
+      { isRevoked: true },
+    );
   }
 
   async deleteExpiredTokens(): Promise<void> {
     const now = new Date();
-    await this.refreshTokenRepository.delete({
-      expiresAt: LessThan(now),
+    await this.refreshTokenModel.deleteMany({
+      expiresAt: { $lt: now },
     });
   }
 

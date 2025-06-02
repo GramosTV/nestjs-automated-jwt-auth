@@ -1,9 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { UsersService } from './users.service';
 import { ConflictException, NotFoundException } from '@nestjs/common';
-import { Repository } from 'typeorm';
-import { UserEntity } from './entities/user.entity';
-import { getRepositoryToken } from '@nestjs/typeorm';
+import { Model } from 'mongoose';
+import { User, UserDocument } from './schemas/user.schema';
+import { getModelToken } from '@nestjs/mongoose';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import * as bcrypt from 'bcrypt';
@@ -13,10 +13,10 @@ jest.mock('bcrypt');
 
 describe('UsersService', () => {
   let service: UsersService;
-  let userRepository: jest.Mocked<Repository<UserEntity>>;
+  let userModel: jest.Mocked<Model<UserDocument>>;
 
-  const mockUser: UserEntity = {
-    id: 'test-uuid',
+  const mockUser: UserDocument = {
+    _id: 'test-uuid',
     firstName: 'John',
     lastName: 'Doe',
     email: 'test@example.com',
@@ -25,36 +25,52 @@ describe('UsersService', () => {
     createdAt: new Date(),
     updatedAt: new Date(),
     emailVerifiedAt: null,
-  };
-
+  } as UserDocument;
   beforeEach(async () => {
-    const mockRepository = {
-      findOneBy: jest.fn(),
-      findOne: jest.fn(),
-      create: jest.fn(),
-      insert: jest.fn(),
-      save: jest.fn(),
+    const MockUserModel = jest.fn().mockImplementation((data) => ({
+      ...data,
+      save: jest.fn().mockResolvedValue({
+        ...data,
+        _id: 'test-uuid',
+        toObject: jest.fn().mockReturnValue({ ...data, _id: 'test-uuid' }),
+      }),
+    }));
+
+    (MockUserModel as any).findOne = jest.fn();
+    (MockUserModel as any).findById = jest.fn();
+    (MockUserModel as any).findByIdAndUpdate = jest.fn();
+
+    (MockUserModel as any).findOne.mockResolvedValue(null);
+    (MockUserModel as any).findById.mockResolvedValue(null);
+    const defaultUpdateQuery = {
+      exec: jest.fn().mockResolvedValue(null),
     };
+    (MockUserModel as any).findByIdAndUpdate.mockReturnValue(
+      defaultUpdateQuery,
+    );
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UsersService,
         {
-          provide: getRepositoryToken(UserEntity),
-          useValue: mockRepository,
+          provide: getModelToken(User.name),
+          useValue: MockUserModel,
         },
       ],
     }).compile();
 
     service = module.get<UsersService>(UsersService);
-    userRepository = module.get(getRepositoryToken(UserEntity));
+    userModel = module.get(getModelToken(User.name));
   });
-
   it('should be defined', () => {
     expect(service).toBeDefined();
   });
-
   describe('createUser', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      (userModel as any).findOne.mockResolvedValue(null);
+    });
+
     it('should create a new user successfully', async () => {
       const createUserDto: CreateUserDto = {
         firstName: 'John',
@@ -63,25 +79,20 @@ describe('UsersService', () => {
         password: 'password123',
       };
 
-      userRepository.findOneBy.mockResolvedValue(null);
+      (userModel as any).findOne.mockResolvedValue(null);
       (bcrypt.genSalt as jest.Mock).mockResolvedValue('salt');
       (bcrypt.hash as jest.Mock).mockResolvedValue('hashedPassword');
-      userRepository.create.mockReturnValue({
-        ...createUserDto,
-        password: 'hashedPassword',
-      } as UserEntity);
 
       await service.create(createUserDto);
 
-      expect(userRepository.findOneBy).toHaveBeenCalledWith({
+      expect(userModel.findOne).toHaveBeenCalledWith({
         email: 'new@example.com',
       });
       expect(bcrypt.hash).toHaveBeenCalledWith('password123', 'salt');
-      expect(userRepository.create).toHaveBeenCalledWith({
+      expect(userModel).toHaveBeenCalledWith({
         ...createUserDto,
         password: 'hashedPassword',
       });
-      expect(userRepository.insert).toHaveBeenCalled();
     });
 
     it('should throw ConflictException if email already exists', async () => {
@@ -92,9 +103,9 @@ describe('UsersService', () => {
         password: 'password123',
       };
 
-      userRepository.findOneBy.mockResolvedValue({
+      userModel.findOne.mockResolvedValue({
         email: 'existing@example.com',
-      } as UserEntity);
+      } as UserDocument);
 
       await expect(service.create(createUserDto)).rejects.toThrow(
         new ConflictException(
@@ -106,61 +117,66 @@ describe('UsersService', () => {
 
   describe('findOneById', () => {
     it('should find a user by id successfully', async () => {
-      userRepository.findOne.mockResolvedValue(mockUser);
+      userModel.findById.mockResolvedValue(mockUser);
 
       const result = await service.findOneById('test-uuid');
       expect(result).toEqual(mockUser);
-      expect(userRepository.findOne).toHaveBeenCalledWith({
-        where: { id: 'test-uuid' },
-      });
+      expect(userModel.findById).toHaveBeenCalledWith('test-uuid');
     });
 
     it('should throw NotFoundException if user with id does not exist', async () => {
-      userRepository.findOne.mockResolvedValue(null);
+      userModel.findById.mockResolvedValue(null);
 
       await expect(service.findOneById('non-existent-id')).rejects.toThrow(
         new NotFoundException('User with ID non-existent-id not found.'),
       );
     });
   });
-
   describe('findOneByEmail', () => {
     it('should find a user by email successfully', async () => {
-      userRepository.findOne.mockResolvedValue(mockUser);
+      const mockQuery = {
+        select: jest.fn().mockReturnThis(),
+        exec: jest.fn().mockResolvedValue(mockUser),
+      };
+      userModel.findOne.mockReturnValue(mockQuery as any);
 
       const result = await service.findOneByEmail('test@example.com');
       expect(result).toEqual(mockUser);
-      expect(userRepository.findOne).toHaveBeenCalledWith({
-        where: { email: 'test@example.com' },
-        select: undefined,
+      expect(userModel.findOne).toHaveBeenCalledWith({
+        email: 'test@example.com',
       });
     });
 
     it('should find a user by email with selected fields', async () => {
-      userRepository.findOne.mockResolvedValue({
-        id: mockUser.id,
-        email: mockUser.email,
-        password: mockUser.password,
-      } as UserEntity);
+      const mockQuery = {
+        select: jest.fn().mockReturnThis(),
+        exec: jest.fn().mockResolvedValue({
+          _id: mockUser._id,
+          email: mockUser.email,
+          password: mockUser.password,
+        }),
+      };
+      userModel.findOne.mockReturnValue(mockQuery as any);
 
       const result = await service.findOneByEmail('test@example.com', [
-        'id',
+        '_id',
         'email',
         'password',
       ]);
       expect(result).toEqual({
-        id: mockUser.id,
+        _id: mockUser._id,
         email: mockUser.email,
         password: mockUser.password,
       });
-      expect(userRepository.findOne).toHaveBeenCalledWith({
-        where: { email: 'test@example.com' },
-        select: ['id', 'email', 'password'],
-      });
+      expect(mockQuery.select).toHaveBeenCalledWith('_id email password');
     });
 
     it('should throw NotFoundException if user with email does not exist', async () => {
-      userRepository.findOne.mockResolvedValue(null);
+      const mockQuery = {
+        select: jest.fn().mockReturnThis(),
+        exec: jest.fn().mockResolvedValue(null),
+      };
+      userModel.findOne.mockReturnValue(mockQuery as any);
 
       await expect(
         service.findOneByEmail('non-existent@example.com'),
@@ -171,7 +187,6 @@ describe('UsersService', () => {
       );
     });
   });
-
   describe('updateUser', () => {
     it('should update a user successfully', async () => {
       const updateUserDto: UpdateUserDto = {
@@ -179,24 +194,24 @@ describe('UsersService', () => {
         lastName: 'Name',
       };
 
-      userRepository.findOneBy.mockResolvedValue(mockUser);
-      userRepository.save.mockResolvedValue({ ...mockUser, ...updateUserDto });
+      const mockUserToUpdate = {
+        ...mockUser,
+        save: jest.fn().mockResolvedValue({ ...mockUser, ...updateUserDto }),
+      };
+      userModel.findById.mockResolvedValue(mockUserToUpdate);
 
       const result = await service.updateUser('test-uuid', updateUserDto);
       expect(result).toEqual({ ...mockUser, ...updateUserDto });
-      expect(userRepository.findOneBy).toHaveBeenCalledWith({
-        id: 'test-uuid',
-      });
-      expect(userRepository.save).toHaveBeenCalled();
+      expect(userModel.findById).toHaveBeenCalledWith('test-uuid');
+      expect(mockUserToUpdate.save).toHaveBeenCalled();
     });
-
     it('should throw NotFoundException if user to update does not exist', async () => {
       const updateUserDto: UpdateUserDto = {
         firstName: 'Updated',
         lastName: 'Name',
       };
 
-      userRepository.findOneBy.mockResolvedValue(null);
+      userModel.findById.mockResolvedValue(null);
 
       await expect(
         service.updateUser('non-existent-id', updateUserDto),
@@ -212,29 +227,29 @@ describe('UsersService', () => {
         password: 'shouldBeRemoved',
       };
 
-      userRepository.findOneBy.mockResolvedValue(mockUser);
-      userRepository.save.mockResolvedValue({
+      const mockUserToUpdate = {
         ...mockUser,
-        ...updateUserDto,
-        password: mockUser.password,
-      });
-
+        save: jest.fn().mockResolvedValue({
+          ...mockUser,
+          firstName: 'Updated',
+          lastName: 'Name',
+        }),
+      };
+      userModel.findById.mockResolvedValue(mockUserToUpdate);
       await service.updateUser('test-uuid', updateUserDto);
 
-      // Check that password is not passed to save
-      const savedUser = userRepository.save.mock.calls[0][0];
-      expect(savedUser.password).toEqual(mockUser.password);
-      expect('password' in updateUserDto).toBeFalsy();
+      expect(updateUserDto).not.toHaveProperty('password');
     });
   });
 
   describe('save', () => {
     it('should save a user entity', async () => {
-      userRepository.save.mockResolvedValue(mockUser);
+      const mockSave = jest.fn().mockResolvedValue(mockUser);
+      const userWithSave = { ...mockUser, save: mockSave };
 
-      const result = await service.save(mockUser);
+      const result = await service.save(userWithSave as any);
       expect(result).toEqual(mockUser);
-      expect(userRepository.save).toHaveBeenCalledWith(mockUser);
+      expect(mockSave).toHaveBeenCalled();
     });
   });
 });

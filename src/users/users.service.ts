@@ -5,9 +5,9 @@ import {
   Inject,
   forwardRef,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { UserEntity } from './entities/user.entity';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { User, UserDocument } from './schemas/user.schema';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import * as bcrypt from 'bcrypt';
@@ -15,12 +15,12 @@ import * as bcrypt from 'bcrypt';
 @Injectable()
 export class UsersService {
   constructor(
-    @InjectRepository(UserEntity)
-    private userRepository: Repository<UserEntity>,
+    @InjectModel(User.name)
+    private userModel: Model<UserDocument>,
   ) {}
 
-  async create(userData: CreateUserDto): Promise<UserEntity> {
-    const existingUser = await this.userRepository.findOneBy({
+  async create(userData: CreateUserDto): Promise<UserDocument> {
+    const existingUser = await this.userModel.findOne({
       email: userData.email,
     });
     if (existingUser) {
@@ -30,28 +30,32 @@ export class UsersService {
 
     const salt = await bcrypt.genSalt();
     userData.password = await bcrypt.hash(userData.password, salt);
-    const user = this.userRepository.create(userData);
-    await this.userRepository.insert(user);
-    user.password = '';
-    return user;
+    const user = new this.userModel(userData);
+    const savedUser = await user.save();
+    const userObject = savedUser.toObject();
+    delete (userObject as any).password;
+    return userObject as UserDocument;
   }
 
   async findOneById(id: string) {
-    const user = await this.userRepository.findOne({
-      where: { id },
-    });
+    const user = await this.userModel.findById(id);
     if (!user) {
       const errorMessage = `User with ID ${id} not found.`;
       throw new NotFoundException(errorMessage);
     }
     return user;
   }
+  async findOneByEmail(
+    email: string,
+    select?: string[],
+  ): Promise<UserDocument> {
+    let query = this.userModel.findOne({ email });
 
-  async findOneByEmail(email: string, select?: (keyof UserEntity)[]) {
-    const user = await this.userRepository.findOne({
-      where: { email },
-      select,
-    });
+    if (select) {
+      query = query.select(select.join(' ')) as any;
+    }
+
+    const user = await query.exec();
     if (!user) {
       const errorMessage = `User with email ${email} not found.`;
       throw new NotFoundException(errorMessage);
@@ -60,7 +64,7 @@ export class UsersService {
   }
 
   async updateUser(id: string, updateUserDto: UpdateUserDto) {
-    const user = await this.userRepository.findOneBy({ id });
+    const user = await this.userModel.findById(id);
 
     if (!user) {
       const errorMessage = `User with ID ${id} not found.`;
@@ -72,10 +76,10 @@ export class UsersService {
     }
 
     Object.assign(user, updateUserDto);
-    return await this.userRepository.save(user);
+    return await user.save();
   }
 
-  async save(user: UserEntity): Promise<UserEntity> {
-    return await this.userRepository.save(user);
+  async save(user: UserDocument): Promise<UserDocument> {
+    return await user.save();
   }
 }

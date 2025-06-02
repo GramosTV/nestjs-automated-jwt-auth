@@ -12,7 +12,7 @@ import {
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { UserEntity } from './entities/user.entity';
+import { UserDocument } from './schemas/user.schema';
 import { UuidValidationPipe } from '../common/pipes/uuid.pipe';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AuthFastifyRequest } from '../auth/interfaces/auth-fastify-request.interface';
@@ -22,13 +22,13 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Post()
-  async create(@Body() createUserDto: CreateUserDto): Promise<UserEntity> {
+  async create(@Body() createUserDto: CreateUserDto): Promise<UserDocument> {
     return await this.usersService.create(createUserDto);
   }
 
   @UseGuards(JwtAuthGuard)
   @Get('userdata')
-  async findOne(@Req() req: AuthFastifyRequest): Promise<UserEntity> {
+  async findOne(@Req() req: AuthFastifyRequest): Promise<UserDocument> {
     return await this.usersService.findOneById(req.user.sub);
   }
 
@@ -37,7 +37,7 @@ export class UsersController {
   async updateUser(
     @Param('id', UuidValidationPipe) id: string,
     @Body() updateUserDto: UpdateUserDto,
-  ): Promise<UserEntity> {
+  ): Promise<UserDocument> {
     return await this.usersService.updateUser(id, updateUserDto);
   }
 }

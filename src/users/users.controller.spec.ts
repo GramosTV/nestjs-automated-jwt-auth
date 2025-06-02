@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
-import { UserEntity } from './entities/user.entity';
+import { UserDocument } from './schemas/user.schema';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { Role } from './interfaces/role.enum';
@@ -9,9 +9,8 @@ import { Role } from './interfaces/role.enum';
 describe('UsersController', () => {
   let controller: UsersController;
   let usersService: jest.Mocked<UsersService>;
-
-  const mockUser: UserEntity = {
-    id: 'test-uuid',
+  const mockUser: UserDocument = {
+    _id: 'test-uuid',
     firstName: 'John',
     lastName: 'Doe',
     email: 'test@example.com',
@@ -20,7 +19,7 @@ describe('UsersController', () => {
     createdAt: new Date(),
     updatedAt: new Date(),
     emailVerifiedAt: null,
-  };
+  } as UserDocument;
 
   beforeEach(async () => {
     const usersServiceMock = {
@@ -70,7 +69,7 @@ describe('UsersController', () => {
         },
       };
 
-      usersService.findOneById.mockResolvedValue(mockUser);
+      usersService.findOneById.mockResolvedValue(mockUser as any);
 
       const result = await controller.findOne(mockReq as any);
 
@@ -85,12 +84,11 @@ describe('UsersController', () => {
         firstName: 'Updated',
         lastName: 'Name',
       };
-
       usersService.updateUser.mockResolvedValue({
         ...mockUser,
         firstName: 'Updated',
         lastName: 'Name',
-      });
+      } as any);
 
       const result = await controller.updateUser('test-uuid', updateUserDto);
 

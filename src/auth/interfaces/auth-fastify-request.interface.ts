@@ -1,6 +1,6 @@
 import { FastifyRequest } from 'fastify';
 import { JwtAccessPayload } from './jwt-payload.interface';
-import { UserEntity } from '../../users/entities/user.entity';
+import { User, UserDocument } from '../../users/schemas/user.schema';
 
 export interface AuthFastifyRequest extends FastifyRequest {
   user: JwtAccessPayload;
@@ -10,7 +10,7 @@ export interface AuthFastifyRequest extends FastifyRequest {
 }
 
 export interface LoginFastifyRequest extends FastifyRequest {
-  user: Omit<UserEntity, 'password'>;
+  user: Omit<UserDocument, 'password'>;
   cookies: {
     [key: string]: string;
   };

@@ -6,7 +6,7 @@ import { UsersModule } from './users/users.module';
 import { MailModule } from './mail/mail.module';
 import { RefreshTokensModule } from './refresh-tokens/refresh-tokens.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
+import { MongooseModule } from '@nestjs/mongoose';
 import dbConfiguration from './config/db.config';
 import mailerConfig from './config/mailer.config';
 
@@ -16,10 +16,12 @@ import mailerConfig from './config/mailer.config';
       isGlobal: true,
       load: [dbConfiguration, mailerConfig],
     }),
-    TypeOrmModule.forRootAsync({
+    MongooseModule.forRootAsync({
       inject: [ConfigService],
       useFactory: async (configService: ConfigService) => ({
-        ...configService.get('database'),
+        uri: configService.get('database.uri'),
+        useNewUrlParser: configService.get('database.useNewUrlParser'),
+        useUnifiedTopology: configService.get('database.useUnifiedTopology'),
       }),
     }),
     AuthModule,
