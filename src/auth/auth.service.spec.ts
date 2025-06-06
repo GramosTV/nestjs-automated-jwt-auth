@@ -4,6 +4,7 @@ import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
 import { RefreshTokensService } from '../refresh-tokens/refresh-tokens.service';
 import { MailService } from '../mail/mail.service';
+import { ConfigService } from '@nestjs/config';
 import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { UserEntity } from '../users/entities/user.entity';
@@ -17,6 +18,7 @@ describe('AuthService', () => {
   let jwtService: jest.Mocked<JwtService>;
   let refreshTokensService: jest.Mocked<RefreshTokensService>;
   let mailService: jest.Mocked<MailService>;
+  let configService: jest.Mocked<ConfigService>;
 
   const mockUser: Partial<UserEntity> = {
     id: 'test-uuid',
@@ -47,6 +49,20 @@ describe('AuthService', () => {
       sendPasswordResetEmail: jest.fn(),
     };
 
+    const configServiceMock = {
+      getOrThrow: jest.fn((key: string) => {
+        const config = {
+          'jwt.secret': 'test-jwt-secret',
+          'jwt.refreshSecret': 'test-jwt-refresh-secret',
+          'jwt.passwordSecret': 'test-jwt-password-secret',
+          'jwt.accessTokenExpiry': '15m',
+          'jwt.refreshTokenExpiry': '7d',
+          'jwt.passwordTokenExpiry': '1h',
+        };
+        return config[key];
+      }),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
@@ -54,6 +70,7 @@ describe('AuthService', () => {
         { provide: JwtService, useValue: jwtServiceMock },
         { provide: RefreshTokensService, useValue: refreshTokensServiceMock },
         { provide: MailService, useValue: mailServiceMock },
+        { provide: ConfigService, useValue: configServiceMock },
       ],
     }).compile();
 
@@ -62,11 +79,7 @@ describe('AuthService', () => {
     jwtService = module.get(JwtService);
     refreshTokensService = module.get(RefreshTokensService);
     mailService = module.get(MailService);
-
-    // Mock environment variables
-    process.env.JWT_SECRET = 'test-jwt-secret';
-    process.env.JWT_REFRESH_SECRET = 'test-jwt-refresh-secret';
-    process.env.JWT_PASSWORD_SECRET = 'test-jwt-password-secret';
+    configService = module.get(ConfigService);
   });
 
   afterEach(() => {

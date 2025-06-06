@@ -7,6 +7,7 @@ import fastifyCookie from '@fastify/cookie';
 import fastifySecureSession from '@fastify/secure-session';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { randomBytes } from 'crypto';
 
 async function bootstrap() {
@@ -17,9 +18,12 @@ async function bootstrap() {
     fastifyAdapter,
   );
 
+  const configService = app.get(ConfigService);
+
+  const cookieSecret = configService.get<string>('cookie.secret');
   const secureSecret =
-    process.env.COOKIE_SECRET && process.env.COOKIE_SECRET.length >= 32
-      ? process.env.COOKIE_SECRET
+    cookieSecret && cookieSecret.length >= 32
+      ? cookieSecret
       : randomBytes(32).toString('hex');
 
   await app.register(fastifyCookie);
@@ -60,7 +64,8 @@ async function bootstrap() {
     }),
   );
 
-  await app.listen(process.env.PORT ?? 3000, '0.0.0.0');
+  const port = configService.getOrThrow<number>('app.port');
+  await app.listen(port, '0.0.0.0');
   console.log(`Application is running on: ${await app.getUrl()}`);
 }
 

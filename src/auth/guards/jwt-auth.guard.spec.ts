@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { AuthService } from '../auth.service';
+import { ConfigService } from '@nestjs/config';
 import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import * as jwt from 'jsonwebtoken';
 import { Role } from '../../users/interfaces/role.enum';
@@ -20,6 +21,7 @@ jest.mock('jsonwebtoken');
 describe('JwtAuthGuard', () => {
   let guard: JwtAuthGuard;
   let authService: jest.Mocked<AuthService>;
+  let configService: jest.Mocked<ConfigService>;
 
   beforeEach(async () => {
     // Create mock for AuthService
@@ -28,8 +30,15 @@ describe('JwtAuthGuard', () => {
       generateAccessToken: jest.fn(),
     };
 
-    // Set environment variables for testing
-    process.env.JWT_SECRET = 'test-jwt-secret';
+    // Create mock for ConfigService
+    const configServiceMock = {
+      getOrThrow: jest.fn((key: string) => {
+        const config = {
+          'jwt.secret': 'test-jwt-secret',
+        };
+        return config[key];
+      }),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       imports: [
@@ -41,6 +50,7 @@ describe('JwtAuthGuard', () => {
       providers: [
         JwtAuthGuard,
         { provide: AuthService, useValue: authServiceMock },
+        { provide: ConfigService, useValue: configServiceMock },
         // Use our mock JWT strategy
         { provide: 'JwtStrategy', useClass: MockJwtStrategy },
       ],
@@ -52,6 +62,7 @@ describe('JwtAuthGuard', () => {
 
     guard = module.get<JwtAuthGuard>(JwtAuthGuard);
     authService = module.get(AuthService);
+    configService = module.get(ConfigService);
   });
 
   it('should be defined', () => {
@@ -78,9 +89,7 @@ describe('JwtAuthGuard', () => {
           getRequest: jest.fn().mockReturnValue(mockRequest),
           getResponse: jest.fn().mockReturnValue(mockResponse),
         }),
-      } as unknown as ExecutionContext;
-
-      // Override the original implementation to avoid making actual AuthGuard calls
+      } as unknown as ExecutionContext; // Override the original implementation to avoid making actual AuthGuard calls
       jest
         .spyOn(JwtAuthGuard.prototype, 'canActivate')
         .mockImplementation(async function (
@@ -98,7 +107,8 @@ describe('JwtAuthGuard', () => {
           }
 
           try {
-            jwt.verify(accessToken, process.env.JWT_SECRET!);
+            const jwtSecret = configService.getOrThrow('jwt.secret');
+            jwt.verify(accessToken, jwtSecret);
             return true;
           } catch (err) {
             if (refreshToken) {
@@ -137,7 +147,6 @@ describe('JwtAuthGuard', () => {
       expect(result).toBe(true);
       expect(jwt.verify).not.toHaveBeenCalled();
     });
-
     it('should verify token when accessToken is present', async () => {
       // Setup
       mockRequest.headers['Authorization'] = 'Bearer valid-token';
@@ -149,6 +158,7 @@ describe('JwtAuthGuard', () => {
 
       // Verify
       expect(jwt.verify).toHaveBeenCalledWith('valid-token', 'test-jwt-secret');
+      expect(configService.getOrThrow).toHaveBeenCalledWith('jwt.secret');
       expect(result).toBe(true);
     });
 

@@ -2,7 +2,7 @@ import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handleba
 import { registerAs } from '@nestjs/config';
 
 export default registerAs('mailer', () => ({
-  transport: {
+  transport: process.env.MAILER_TRANSPORT || {
     host: process.env.MAILER_HOST,
     port: 2525,
     secure: false,

@@ -5,13 +5,17 @@ import {
   UnauthorizedException,
   Inject,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { AuthGuard } from '@nestjs/passport';
 import * as jwt from 'jsonwebtoken';
 import { AuthService } from '../auth.service';
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') implements CanActivate {
-  constructor(@Inject(AuthService) private readonly authService: AuthService) {
+  constructor(
+    @Inject(AuthService) private readonly authService: AuthService,
+    private configService: ConfigService,
+  ) {
     super();
   }
 
@@ -27,7 +31,10 @@ export class JwtAuthGuard extends AuthGuard('jwt') implements CanActivate {
     }
 
     try {
-      jwt.verify(accessToken, process.env.JWT_SECRET!);
+      jwt.verify(
+        accessToken,
+        this.configService.getOrThrow<string>('jwt.secret'),
+      );
     } catch (err) {
       if (refreshToken) {
         try {

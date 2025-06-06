@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { RefreshTokensService } from './refresh-tokens.service';
 import { JwtService } from '@nestjs/jwt';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -60,9 +61,18 @@ describe('RefreshTokensService', () => {
     const userRepoMock = {
       findOne: jest.fn(),
     };
-
     const jwtServiceMock = {
       sign: jest.fn(),
+    };
+
+    const configServiceMock = {
+      getOrThrow: jest.fn((key: string) => {
+        const mockConfig = {
+          'jwt.refreshTokenExpiry': '30d',
+          'jwt.refreshSecret': 'test-jwt-refresh-secret',
+        };
+        return mockConfig[key];
+      }),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -79,6 +89,10 @@ describe('RefreshTokensService', () => {
         {
           provide: JwtService,
           useValue: jwtServiceMock,
+        },
+        {
+          provide: ConfigService,
+          useValue: configServiceMock,
         },
       ],
     }).compile();

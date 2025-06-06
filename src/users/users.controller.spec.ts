@@ -1,6 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
+import { ConfigService } from '@nestjs/config';
+import { AuthService } from '../auth/auth.service';
 import { UserEntity } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -21,7 +23,6 @@ describe('UsersController', () => {
     updatedAt: new Date(),
     emailVerifiedAt: null,
   };
-
   beforeEach(async () => {
     const usersServiceMock = {
       create: jest.fn(),
@@ -29,9 +30,27 @@ describe('UsersController', () => {
       updateUser: jest.fn(),
     };
 
+    const authServiceMock = {
+      validateRefreshToken: jest.fn(),
+      generateAccessToken: jest.fn(),
+    };
+
+    const configServiceMock = {
+      getOrThrow: jest.fn((key: string) => {
+        const config = {
+          'jwt.secret': 'test-jwt-secret',
+        };
+        return config[key];
+      }),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       controllers: [UsersController],
-      providers: [{ provide: UsersService, useValue: usersServiceMock }],
+      providers: [
+        { provide: UsersService, useValue: usersServiceMock },
+        { provide: AuthService, useValue: authServiceMock },
+        { provide: ConfigService, useValue: configServiceMock },
+      ],
     }).compile();
 
     controller = module.get<UsersController>(UsersController);

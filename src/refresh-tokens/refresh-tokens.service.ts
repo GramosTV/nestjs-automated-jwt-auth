@@ -1,4 +1,5 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { Cron } from '@nestjs/schedule';
 import { JwtService } from '@nestjs/jwt';
@@ -17,13 +18,20 @@ export class RefreshTokensService {
     private jwtService: JwtService,
     @InjectRepository(UserEntity)
     private userRepository: Repository<UserEntity>,
+    private configService: ConfigService,
   ) {}
 
-  async create(userId: string, payload: JwtRefreshPayload, jti: string): Promise<string> {
+  async create(
+    userId: string,
+    payload: JwtRefreshPayload,
+    jti: string,
+  ): Promise<string> {
     try {
       const token = this.jwtService.sign(payload, {
-        expiresIn: '30d',
-        secret: process.env.JWT_REFRESH_SECRET,
+        expiresIn: this.configService.getOrThrow<string>(
+          'jwt.refreshTokenExpiry',
+        ),
+        secret: this.configService.getOrThrow<string>('jwt.refreshSecret'),
       });
 
       const activeTokens = await this.refreshTokenRepository.find({
@@ -35,7 +43,9 @@ export class RefreshTokensService {
       });
 
       if (activeTokens.length >= 3) {
-        const tokenToDelete = activeTokens.reduce((prev, curr) => (prev.expiresAt < curr.expiresAt ? prev : curr));
+        const tokenToDelete = activeTokens.reduce((prev, curr) =>
+          prev.expiresAt < curr.expiresAt ? prev : curr,
+        );
 
         await this.refreshTokenRepository.delete({ id: tokenToDelete.id });
       }
@@ -74,7 +84,10 @@ export class RefreshTokensService {
   }
 
   async revokeAllTokensForUser(userId: string): Promise<void> {
-    await this.refreshTokenRepository.update({ user: { id: userId } }, { isRevoked: true });
+    await this.refreshTokenRepository.update(
+      { user: { id: userId } },
+      { isRevoked: true },
+    );
   }
 
   async deleteExpiredTokens(): Promise<void> {

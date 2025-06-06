@@ -3,6 +3,10 @@ import { ConfigModule } from '@nestjs/config';
 import { UserEntity } from '../src/users/entities/user.entity';
 import { RefreshTokenEntity } from '../src/refresh-tokens/entities/refresh-token.entity';
 import dbConfig from '../src/config/db.config';
+import appConfig from '../src/config/app.config';
+import jwtConfig from '../src/config/jwt.config';
+import cookieConfig from '../src/config/cookie.config';
+import googleConfig from '../src/config/google.config';
 import 'dotenv/config';
 
 export function getTestDbConfig() {
@@ -19,12 +23,11 @@ export function getTestDbConfig() {
   const password = process.env.DB_PASSWORD || '';
 
   process.env.DB_NAME = testDbName;
-
   return {
     imports: [
       ConfigModule.forRoot({
         isGlobal: true,
-        load: [dbConfig],
+        load: [dbConfig, appConfig, jwtConfig, cookieConfig, googleConfig],
       }),
       TypeOrmModule.forRoot({
         type: 'mysql',

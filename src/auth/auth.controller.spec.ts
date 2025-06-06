@@ -1,6 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { ConfigService } from '@nestjs/config';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { BadRequestException } from '@nestjs/common';
 import { RequestPasswordResetDto } from './dto/request-password-reset.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
@@ -9,7 +11,6 @@ import { Role } from '../users/interfaces/role.enum';
 describe('AuthController', () => {
   let controller: AuthController;
   let authService: jest.Mocked<AuthService>;
-
   beforeEach(async () => {
     const authServiceMock = {
       login: jest.fn(),
@@ -17,11 +18,30 @@ describe('AuthController', () => {
       refreshToken: jest.fn(),
       requestPasswordReset: jest.fn(),
       confirmResetPassword: jest.fn(),
+      validateRefreshToken: jest.fn(),
+      generateAccessToken: jest.fn(),
+    };
+
+    const configServiceMock = {
+      getOrThrow: jest.fn((key: string) => {
+        const config = {
+          'jwt.secret': 'test-jwt-secret',
+        };
+        return config[key];
+      }),
+    };
+
+    const jwtAuthGuardMock = {
+      canActivate: jest.fn().mockReturnValue(true),
     };
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AuthController],
-      providers: [{ provide: AuthService, useValue: authServiceMock }],
+      providers: [
+        { provide: AuthService, useValue: authServiceMock },
+        { provide: ConfigService, useValue: configServiceMock },
+        { provide: JwtAuthGuard, useValue: jwtAuthGuardMock },
+      ],
     }).compile();
 
     controller = module.get<AuthController>(AuthController);

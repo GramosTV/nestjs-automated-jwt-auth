@@ -9,17 +9,28 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import dbConfiguration from './config/db.config';
 import mailerConfig from './config/mailer.config';
+import appConfig from './config/app.config';
+import jwtConfig from './config/jwt.config';
+import cookieConfig from './config/cookie.config';
+import googleConfig from './config/google.config';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [dbConfiguration, mailerConfig],
+      load: [
+        dbConfiguration,
+        mailerConfig,
+        appConfig,
+        jwtConfig,
+        cookieConfig,
+        googleConfig,
+      ],
     }),
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: async (configService: ConfigService) => ({
-        ...configService.get('database'),
+        ...configService.getOrThrow('database'),
       }),
     }),
     AuthModule,
