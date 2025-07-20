@@ -43,6 +43,7 @@
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
     "fastify": "^5.2.2",
+    "googleapis": "^153.0.0",
     "mysql2": "^3.14.0",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
