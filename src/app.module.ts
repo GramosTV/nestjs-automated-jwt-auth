@@ -5,6 +5,7 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { MailModule } from './mail/mail.module';
 import { RefreshTokensModule } from './refresh-tokens/refresh-tokens.module';
+import { TestModule } from './test/test.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import dbConfiguration from './config/db.config';
@@ -13,6 +14,7 @@ import appConfig from './config/app.config';
 import jwtConfig from './config/jwt.config';
 import cookieConfig from './config/cookie.config';
 import googleConfig from './config/google.config';
+import gmailConfig from './config/gmail.config';
 
 @Module({
   imports: [
@@ -25,6 +27,7 @@ import googleConfig from './config/google.config';
         jwtConfig,
         cookieConfig,
         googleConfig,
+        gmailConfig,
       ],
     }),
     TypeOrmModule.forRootAsync({
@@ -37,6 +40,7 @@ import googleConfig from './config/google.config';
     UsersModule,
     MailModule,
     RefreshTokensModule,
+    TestModule,
   ],
   controllers: [AppController],
   providers: [AppService],
