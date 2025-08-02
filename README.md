@@ -1,6 +1,6 @@
 # NestJS Automated JWT Authentication
 
-> 💡 **Looking for MongoDB variant?** Check out the [MongoDB branch](https://github.com/GramosTV/nestjs-automated-jwt-auth/tree/mongodb-variant) for a MongoDB implementation of this project.
+> 💡 **Looking for MongoDB variant?** Check out the [MongoDB variant](https://github.com/GramosTV/nestjs-automated-jwt-auth-mongo) for a MongoDB implementation of this project.
 
 <p align="center">
   <img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" />
